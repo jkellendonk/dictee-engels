@@ -47,6 +47,7 @@ src/
   utils.js                  — shuffle/normalize/fmtTime/promptWord-helpers
   hooks/useSound.js          — Web Audio geluidseffecten (correct/fout/streak/klaar)
   components/Header.jsx      — logo, geluid-knop, contextuele rechterkant-slot
+  components/Modal.jsx       — herbruikbare pop-up/dialoog in de huisstijl
   screens/
     StartScreen.jsx           — naam, groep-toggle, richting-toggle, pakketkeuze
     QuizScreen.jsx             — de quiz-motor (useReducer)
@@ -103,25 +104,57 @@ uit de rotatie gehaald. Automatisch doorschakelen na een correct (700ms) of
 fout (1700ms) antwoord via `useEffect` + `setTimeout` (met cleanup zodat een
 handmatige "volgende"-klik geen dubbele advance veroorzaakt).
 
+## Pop-ups / dialogen
+
+`src/components/Modal.jsx` is een herbruikbare, in de eigen huisstijl
+gestylede dialoog (afgeronde kaart, Patrick Hand-titel, `.start-btn`/
+`.ghost-btn` als primaire/secundaire actie, sluit op Escape of klik buiten
+de kaart). De browser-native `window.confirm()` is hiermee vervangen in
+`QuizScreen.jsx` (bevestiging bij "terug naar hoofdmenu"). Nieuwe
+bevestigings- of informatie-pop-ups elders in de app moeten dezelfde
+`Modal`-component hergebruiken in plaats van `window.confirm`/`alert`.
+
+## Testen
+
+Twee lagen, beide in `frontend/`:
+
+- **Unit tests** (Vitest, `jsdom`-omgeving, config in `vitest.config.js`) —
+  colocated naast de broncode als `*.test.js`: `src/utils.test.js`,
+  `src/api.test.js` (localStorage-laag), `src/data/wordPacks.test.js`
+  (datasanity), `src/hooks/useSound.test.js` (via
+  `@testing-library/react`'s `renderHook`, met een gemockte
+  `AudioContext`), en `src/screens/QuizScreen.reducer.test.js` (de
+  quiz-reducer/wachtrijlogica los van React getest — `reducer` en
+  `initialQuizState` zijn daarom als named exports beschikbaar naast de
+  default `QuizScreen`-component). Draaien: `npm run test:unit`.
+- **Frontend/e2e tests** (Playwright, `@playwright/test`, config in
+  `playwright.config.js`) — in `frontend/e2e/`: `start-screen.spec.js`
+  (pakketlijst, Groep 8 lege staat, leeg scorebord) en
+  `quiz-flow.spec.js` (volledige quiz met bekende antwoorden uit
+  `wordPacks.js`, foutfeedback, scorebord-persistentie na reload, en de
+  Modal-dialoog). De Playwright-config bouwt en serveert de app zelf
+  (`webServer` draait `npm run build && npm run preview`), dus
+  `npm run test:e2e` heeft geen los gestarte dev-server nodig. Chromium
+  moet wel eenmalig lokaal geïnstalleerd zijn: `npx playwright install
+  chromium`.
+- `npm test` draait beide lagen na elkaar.
+
 ## Hosten op GitHub Pages
 
 - `vite.config.js` heeft `base: './'` (relatieve paden) zodat de build werkt
   op elk subpad — of de repo nu als user-site (`gebruiker.github.io`) of als
   project-site (`gebruiker.github.io/reponaam`) gehost wordt, hoeft er niets
   aangepast te worden.
-- `.github/workflows/deploy.yml` bouwt bij elke push naar `main` de frontend
-  (`npm ci && npm run build` in `frontend/`) en publiceert `frontend/dist`
-  naar GitHub Pages via de officiële `actions/deploy-pages`-actie.
-- Nog te doen (buiten deze sessie, vraagt om een GitHub-account/repo): een
-  GitHub-repo aanmaken, deze code pushen, en in **Settings → Pages** de
-  bron op "GitHub Actions" zetten.
+- `.github/workflows/deploy.yml` (heet "CI en Deploy naar GitHub Pages")
+  draait op elke push/PR naar `main` eerst de volledige testset (`test`-job:
+  unit + Playwright e2e, incl. chromium-install), dan pas de `build`-job
+  (`npm run build`) en tot slot de `deploy`-job — die laatste alleen bij een
+  echte push naar `main` (niet bij pull requests), zodat een kapotte build
+  nooit gepubliceerd wordt. Playwright-rapporten worden als CI-artifact
+  bewaard bij een falende run.
 
 ## Bekende kanttekeningen / gotchas
 
-- **Geen tests** — verificatie gebeurt handmatig/ad-hoc: `vite build` +
-  `vite preview`, en tijdelijke Playwright-scriptjes (steeds weer
-  verwijderd na gebruik, inclusief de `playwright`-devdependency zelf) om de
-  volledige quizflow te controleren zonder dat er een server nodig is.
 - **`localStorage`-limieten**: werkt niet in een privé/incognito-venster na
   sluiten, en is gebonden aan het exacte origin (domein) waarop de site
   draait — verhuizen naar een andere URL betekent dat oude scores niet

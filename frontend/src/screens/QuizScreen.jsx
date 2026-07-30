@@ -1,10 +1,11 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import Header from '../components/Header.jsx'
+import Modal from '../components/Modal.jsx'
 import { normalize, fmtTime, shuffle, promptWord, answerWord, promptLabel } from '../utils.js'
 
 const PRAISE = ['Goed zo!', 'Top!', 'Knap gedaan!', 'Yes!']
 
-function initialQuizState(pack) {
+export function initialQuizState(pack) {
   const queue = shuffle(pack.pairs.map((_, i) => i))
   return {
     queue,
@@ -24,7 +25,7 @@ function initialQuizState(pack) {
   }
 }
 
-function reducer(state, action) {
+export function reducer(state, action) {
   switch (action.type) {
     case 'SUBMIT': {
       const { isCorrect, idx } = action
@@ -85,6 +86,7 @@ function reducer(state, action) {
 function QuizScreen({ pack, direction, playerName, sound, onFinish, onBackToMenu }) {
   const [state, dispatch] = useReducer(reducer, pack, initialQuizState)
   const [elapsed, setElapsed] = useState(0)
+  const [showConfirm, setShowConfirm] = useState(false)
   const startedAtRef = useRef(Date.now())
   const inputRef = useRef(null)
 
@@ -157,19 +159,16 @@ function QuizScreen({ pack, direction, playerName, sound, onFinish, onBackToMenu
   useEffect(() => {
     const handler = (e) => {
       if (e.key !== 'Enter') return
+      if (showConfirm) return
       if (!state.answered) submitAnswer()
       else dispatch({ type: 'ADVANCE' })
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.answered, correctAnswer])
+  }, [state.answered, correctAnswer, showConfirm])
 
-  const confirmBackToMenu = () => {
-    if (window.confirm('Weet je zeker dat je wilt stoppen? Je voortgang in deze ronde gaat dan verloren.')) {
-      onBackToMenu()
-    }
-  }
+  const requestBackToMenu = () => setShowConfirm(true)
 
   const trail = pack.pairs.map((_, i) => {
     let cls = 'step'
@@ -187,7 +186,7 @@ function QuizScreen({ pack, direction, playerName, sound, onFinish, onBackToMenu
         right={
           <>
             <div className="player-badge">👤 {playerName} &middot; {pack.name}</div>
-            <button className="menu-btn" onClick={confirmBackToMenu}>🏠 Hoofdmenu</button>
+            <button className="menu-btn" onClick={requestBackToMenu}>🏠 Hoofdmenu</button>
           </>
         }
       />
@@ -249,6 +248,17 @@ function QuizScreen({ pack, direction, playerName, sound, onFinish, onBackToMenu
           {state.answered ? (state.queue.length === 1 ? 'Nu naar score ➜' : 'Nu al verder ➜') : 'Volgende ➜'}
         </button>
       </div>
+
+      {showConfirm && (
+        <Modal
+          title="Stoppen met deze ronde?"
+          onClose={() => setShowConfirm(false)}
+          secondaryAction={{ label: 'Ja, stoppen', onClick: onBackToMenu }}
+          primaryAction={{ label: 'Verder spelen', onClick: () => setShowConfirm(false) }}
+        >
+          Je voortgang in dit pakket gaat dan verloren.
+        </Modal>
+      )}
     </>
   )
 }
