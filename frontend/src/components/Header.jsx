@@ -9,7 +9,6 @@ function Header({ soundEnabled, onToggleSound, right }) {
         </div>
         <div className="brand-text">
           <h1>Dictee Engels</h1>
-          <div className="brand-sub">obs De Trinoom &middot; Wijchen</div>
         </div>
       </div>
       {right}
