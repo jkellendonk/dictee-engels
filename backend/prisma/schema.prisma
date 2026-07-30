@@ -1,0 +1,49 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model WordPack {
+  id        Int      @id @default(autoincrement())
+  name      String
+  group     String   @default("Groep 7")
+  createdAt DateTime @default(now())
+  pairs     WordPair[]
+  scores    ScoreResult[]
+
+  @@unique([name, group])
+}
+
+model WordPair {
+  id       Int      @id @default(autoincrement())
+  packId   Int
+  pack     WordPack @relation(fields: [packId], references: [id])
+  english  String
+  dutch    String
+}
+
+model ScoreResult {
+  id               Int      @id @default(autoincrement())
+  playerName       String
+  packId           Int
+  pack             WordPack @relation(fields: [packId], references: [id])
+  direction        String
+  totalWords       Int
+  firstTryCorrect  Int
+  accuracy         Int
+  mistakes         Int
+  timeSeconds      Int
+  wpm              Float
+  bestStreak       Int
+  stars            Int
+  createdAt        DateTime @default(now())
+}
