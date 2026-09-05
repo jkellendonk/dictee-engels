@@ -1,8 +1,8 @@
 # Architectuur — Dictee Engels
 
 Een Engelse woordentrainer voor obs De Trinoom (Wijchen). Spelers kiezen een
-groep (leerjaar), een woordpakket en een richting (NL→EN of EN→NL), typen de
-vertaling, en bouwen een streak op.
+onderwerp, een onderdeel (woordjes / werkwoorden / zinnen / alles) en een
+richting (NL→EN of EN→NL), typen de vertaling, en bouwen een streak op.
 
 De app is een **volledig statische website** (`frontend/`): geen server, geen
 database nodig om te draaien. Woordpakketten zitten ingebakken in de
@@ -41,15 +41,16 @@ visuele regressie in Tailwind-utilities te herschrijven.
 
 ```
 src/
-  App.jsx                 — schermwissel + gedeelde state (naam, groep, richting, pakket)
+  App.jsx                 — schermwissel + gedeelde state (naam, groep8, onderwerp, onderdeel, richting)
   api.js                   — "backend-laagje": leest/schrijft data lokaal (geen fetch meer)
-  data/wordPacks.js         — alle woordpakketten, gegroepeerd per leerjaar
+  data/wordPacks.js         — TOPICS: alle onderwerpen, per onderwerp de 3 onderdelen
+  data/categories.js         — label/icoon/kleur per onderdeel (woorden/werkwoorden/zinnen/alles)
   utils.js                  — shuffle/normalize/fmtTime/promptWord-helpers
   hooks/useSound.js          — Web Audio geluidseffecten (correct/fout/streak/klaar)
   components/Header.jsx      — logo, geluid-knop, contextuele rechterkant-slot
   components/Modal.jsx       — herbruikbare pop-up/dialoog in de huisstijl
   screens/
-    StartScreen.jsx           — naam, groep-toggle, richting-toggle, pakketkeuze
+    StartScreen.jsx           — naam, Groep 8-vinkje, richting, onderwerp- en onderdeelkeuze
     QuizScreen.jsx             — de quiz-motor (useReducer)
     ResultScreen.jsx            — score, sterren, "nieuw record", top 5
     BoardScreen.jsx              — volledig scorebord, gegroepeerd per speler
@@ -58,29 +59,55 @@ src/
 
 ### Datamodel (`src/data/wordPacks.js`)
 
+Alle onderwerpen (topics) gelden voor **zowel Groep 7 als Groep 8** — er is
+geen aparte groepsdata. Elk onderwerp heeft tot drie onderdelen
+(categorieën): `woorden`, `werkwoorden` en `zinnen`, elk een array van
+`{ english, dutch }`:
+
 ```js
-{
-  "Groep 7": {
-    Activities: [{ english, dutch }, ...],
-    Animals: [...],
-    ...
+export const TOPICS = {
+  Emotions: {
+    categories: {
+      woorden: [{ english, dutch }, ...],
+      werkwoorden: [{ english, dutch, hint? }, ...],
+      zinnen: [{ english, dutch }, ...],
+    },
   },
-  "Groep 8": {}   // nog leeg — vul aan zodra er lesstof voor is
+  Style: { categories: { ... } },
+  ...
+  People: { categories: { woorden: [...], zinnen: [...] } },  // geen werkwoorden — niet elk onderwerp heeft alle 3
 }
 ```
 
-Een pakket-`id` is simpelweg `"<groep>::<naam>"` (bv. `"Groep 7::Animals"`) —
-geen database-ids nodig omdat de data statisch is.
+Het **enige** verschil tussen Groep 7 en Groep 8 is dat de categorie
+`zinnen` alleen zichtbaar/speelbaar is als het "Ik zit in groep 8"-vinkje op
+`StartScreen.jsx` aan staat (`groep8` state in `App.jsx`) — zie `api.js`
+hieronder. Er is dus bewust geen groep-toggle meer en geen `groep8Only`-vlag
+op onderwerpniveau: alle 8 onderwerpen zijn altijd zichtbaar.
 
-### `api.js` — dezelfde interface, andere achterkant
+Bij "you"-vervoegingen (Engels maakt geen onderscheid enkelvoud/meervoud,
+Nederlands wel: jij vs. jullie) krijgt zo'n paar een `hint` (`'jij'` of
+`'jullie'`) die alleen als aanwijzing bij de vraag verschijnt
+(`promptWord` in `utils.js`) — nooit onderdeel van het te typen antwoord.
 
-`api.js` exporteert nog steeds `getPacks(group)`, `getPack(id)`,
-`getScores()`, `postScore(score)` — exact dezelfde functies als toen ze naar
-de Express-backend fetchten. Daardoor hoefden de schermen (`StartScreen`,
-`QuizScreen`, `ResultScreen`, `BoardScreen`) **niet aangepast** te worden bij
-de overstap naar statisch; alleen de implementatie van `api.js` veranderde:
+`src/data/categories.js` bevat de label/icoon/kleur-metadata (📖 Woordjes,
+🏃 Werkwoorden, 💬 Zinnen) die zowel de onderdeel-chips op `StartScreen` als
+het kleurtje/icoontje per vraag op `QuizScreen` (`.category-badge`) tekenen —
+in de "Alles"-modus behoudt elke vraag zo zijn eigen categorie-kleurtje, ook
+al zijn de onderdelen door elkaar geshuffeld.
 
-- `getPacks`/`getPack` lezen uit `src/data/wordPacks.js`.
+### `api.js` — onderwerp + onderdeel + groep8 → pakket
+
+- `getTopics()` — alle onderwerpnamen, altijd (geen groep8-parameter nodig).
+- `getCategories(topicName, groep8)` — de onderdelen die voor dit onderwerp
+  beschikbaar zijn (zinnen alleen als `groep8`), plus een `alles`-optie met
+  het opgetelde aantal.
+- `getPack(topicName, category, groep8)` — bouwt het daadwerkelijke
+  oefenpakket. Bij `category === 'alles'` worden alle beschikbare onderdelen
+  samengevoegd tot één array, waarbij elk paar zijn eigen `category` behoudt
+  (voor het kleurtje/icoontje in de quiz). Pakket-`id` is
+  `"<onderwerp>::<onderdeel>"` (bv. `"Animals::werkwoorden"`,
+  `"Animals::alles"`) — geen database-ids nodig omdat de data statisch is.
 - `getScores`/`postScore` lezen/schrijven een array in
   `localStorage["dictee-engels-scores"]`.
 
@@ -93,8 +120,8 @@ is, is `backend/` (zie onder) het startpunt om dat terug te brengen.
 
 **State-model**: `App.jsx` is de enige plek met scherm-state
 (`start`/`quiz`/`result`/`board`) en de waarden die tussen schermen moeten
-reizen (naam, groep, richting, gekozen pakket, laatste resultaat). Elk
-scherm is een losstaand component dat die waarden en setters als props
+reizen (naam, `groep8`, onderwerp, onderdeel, richting, laatste resultaat).
+Elk scherm is een losstaand component dat die waarden en setters als props
 krijgt — geen context/store, want de boom is maar 4 schermen diep.
 
 **Quiz-motor** (`QuizScreen.jsx`): een `useReducer` met een wachtrij van
@@ -129,10 +156,11 @@ Twee lagen, beide in `frontend/`:
   default `QuizScreen`-component). Draaien: `npm run test:unit`.
 - **Frontend/e2e tests** (Playwright, `@playwright/test`, config in
   `playwright.config.js`) — in `frontend/e2e/`: `start-screen.spec.js`
-  (pakketlijst, Groep 8 lege staat, leeg scorebord) en
-  `quiz-flow.spec.js` (volledige quiz met bekende antwoorden uit
-  `wordPacks.js`, foutfeedback, scorebord-persistentie na reload, en de
-  Modal-dialoog). De Playwright-config bouwt en serveert de app zelf
+  (onderwerpenlijst, het Groep 8-vinkje dat alleen "zinnen" toont/verbergt,
+  leeg scorebord) en `quiz-flow.spec.js` (volledige quiz met bekende
+  antwoorden uit `wordPacks.js`, de categorie-badge, foutfeedback,
+  scorebord-persistentie na reload, en de Modal-dialoog). De
+  Playwright-config bouwt en serveert de app zelf
   (`webServer` draait `npm run build && npm run preview`), dus
   `npm run test:e2e` heeft geen los gestarte dev-server nodig. Chromium
   moet wel eenmalig lokaal geïnstalleerd zijn: `npx playwright install

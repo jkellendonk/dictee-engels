@@ -17,9 +17,13 @@ export function fmtTime(sec) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-// Woord dat getoond wordt als vraag
+// Woord dat getoond wordt als vraag. Bij werkwoordvervoegingen waarbij het
+// Engelse "you" geen onderscheid maakt tussen enkelvoud/meervoud (jij/jullie),
+// verduidelijkt een hint welke vorm bedoeld is — alleen zichtbaar als prompt,
+// nooit onderdeel van het te typen antwoord (zie answerWord).
 export function promptWord(pair, direction) {
-  return direction === 'nl-en' ? pair.dutch : pair.english
+  if (direction === 'nl-en') return pair.dutch
+  return pair.hint ? `${pair.english} (${pair.hint})` : pair.english
 }
 
 // Woord dat getypt moet worden als antwoord
@@ -27,8 +31,12 @@ export function answerWord(pair, direction) {
   return direction === 'nl-en' ? pair.english : pair.dutch
 }
 
-export function promptLabel(direction) {
-  return direction === 'nl-en'
-    ? 'Typ het Engelse woord voor'
-    : 'Typ het Nederlandse woord voor'
+const PROMPT_NOUNS = {
+  woorden: { article: 'het', noun: 'woord' },
+  zinnen: { article: 'de', noun: 'zin' },
+}
+
+export function promptLabel(direction, type = 'woorden') {
+  const { article, noun } = PROMPT_NOUNS[type] || PROMPT_NOUNS.woorden
+  return direction === 'nl-en' ? `Typ ${article} Engelse ${noun} voor` : `Typ ${article} Nederlandse ${noun} voor`
 }

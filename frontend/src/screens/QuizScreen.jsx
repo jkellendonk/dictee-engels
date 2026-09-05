@@ -2,6 +2,7 @@ import { useEffect, useReducer, useRef, useState } from 'react'
 import Header from '../components/Header.jsx'
 import Modal from '../components/Modal.jsx'
 import { normalize, fmtTime, shuffle, promptWord, answerWord, promptLabel } from '../utils.js'
+import { CATEGORY_META } from '../data/categories.js'
 
 const PRAISE = ['Goed zo!', 'Top!', 'Knap gedaan!', 'Yes!']
 
@@ -93,6 +94,7 @@ function QuizScreen({ pack, direction, playerName, sound, onFinish, onBackToMenu
   const pair = pack.pairs[state.activeIndex]
   const shownWord = promptWord(pair, direction)
   const correctAnswer = answerWord(pair, direction)
+  const categoryMeta = CATEGORY_META[pair.category]
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -217,7 +219,13 @@ function QuizScreen({ pack, direction, playerName, sound, onFinish, onBackToMenu
 
       <div className="stage">
         <div className="prompt-card">
-          <div className="prompt-label">{promptLabel(direction)}</div>
+          {categoryMeta && (
+            <div className="category-badge" style={{ '--chip-color': categoryMeta.color }}>
+              <span className="dot" aria-hidden="true"></span>
+              {categoryMeta.icon} {categoryMeta.label}
+            </div>
+          )}
+          <div className="prompt-label">{promptLabel(direction, pair.category)}</div>
           <div className="prompt-word">{shownWord}</div>
         </div>
       </div>
@@ -236,7 +244,7 @@ function QuizScreen({ pack, direction, playerName, sound, onFinish, onBackToMenu
           Controleer
         </button>
       </div>
-      <div className="hint">Druk op Enter: je antwoord wordt gecontroleerd en het volgende woord komt vanzelf</div>
+      <div className="hint">Druk op Enter: je antwoord wordt gecontroleerd en je gaat vanzelf verder</div>
 
       <div className="footer">
         <div className="score"><span>Onder de knie</span> <b>{state.mastered.size} / {pack.pairs.length}</b></div>

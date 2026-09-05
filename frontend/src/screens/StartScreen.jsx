@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import Header from '../components/Header.jsx'
-import { getPacks } from '../api.js'
+import { getTopics, getCategories } from '../api.js'
+import { CATEGORY_META, ALLES_META } from '../data/categories.js'
 
-const GROUPS = ['Groep 7', 'Groep 8']
+function categoryMeta(category) {
+  return category === 'alles' ? ALLES_META : CATEGORY_META[category]
+}
 
 function StartScreen({
   sound,
@@ -10,27 +13,42 @@ function StartScreen({
   setPlayerName,
   direction,
   setDirection,
-  group,
-  setGroup,
-  packId,
-  setPackId,
+  groep8,
+  setGroep8,
+  topicName,
+  setTopicName,
+  category,
+  setCategory,
   onStart,
   onOpenBoard,
 }) {
-  const [packs, setPacks] = useState([])
+  const [topics, setTopics] = useState([])
+  const [categories, setCategories] = useState([])
 
+  // Alle onderwerpen gelden voor zowel Groep 7 als Groep 8, dus deze lijst
+  // staat vast en hoeft niet opnieuw opgehaald te worden als het vinkje wisselt.
   useEffect(() => {
-    setPackId(null)
-    getPacks(group).then((data) => {
-      setPacks(data)
-      if (data.length > 0) setPackId(data[0].id)
+    getTopics().then((names) => {
+      setTopics(names)
+      setTopicName((current) => (current && names.includes(current) ? current : (names[0] ?? null)))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [group])
+  }, [])
+
+  useEffect(() => {
+    if (!topicName) {
+      setCategories([])
+      return
+    }
+    getCategories(topicName, groep8).then((cats) => {
+      setCategories(cats)
+      setCategory((current) => (current && cats.some((c) => c.category === current) ? current : 'alles'))
+    })
+  }, [topicName, groep8, setCategory])
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (packId) onStart()
+    if (topicName && category) onStart()
   }
 
   return (
@@ -38,7 +56,7 @@ function StartScreen({
       <Header soundEnabled={sound.enabled} onToggleSound={sound.toggle} />
       <div className="panel">
         <h2>Wie gaat er oefenen?</h2>
-        <p className="sub">Vul je naam in, kies een groep, richting en een pakket om te starten</p>
+        <p className="sub">Vul je naam in, kies een onderwerp en een onderdeel om te starten</p>
         <form onSubmit={handleSubmit}>
           <label htmlFor="nameInput">Naam</label>
           <input
@@ -50,19 +68,15 @@ function StartScreen({
             onChange={(e) => setPlayerName(e.target.value)}
           />
 
-          <label>Groep</label>
-          <div className="dir-toggle">
-            {GROUPS.map((g) => (
-              <button
-                key={g}
-                type="button"
-                className={`dir-btn ${group === g ? 'active' : ''}`}
-                onClick={() => setGroup(g)}
-              >
-                {g}
-              </button>
-            ))}
-          </div>
+          <label className="checkbox-row" htmlFor="groep8Check">
+            <input
+              id="groep8Check"
+              type="checkbox"
+              checked={groep8}
+              onChange={(e) => setGroep8(e.target.checked)}
+            />
+            Ik zit in groep 8 (zinnen erbij)
+          </label>
 
           <label>Richting</label>
           <div className="dir-toggle">
@@ -82,25 +96,47 @@ function StartScreen({
             </button>
           </div>
 
-          <label>Kies een pakket</label>
-          {packs.length === 0 ? (
-            <p className="sub">Nog geen woordpakketten voor {group}. Kies een andere groep.</p>
-          ) : (
-            <div className="pack-grid">
-              {packs.map((p) => (
-                <div
-                  key={p.id}
-                  className={`pack-card ${p.id === packId ? 'active' : ''}`}
-                  onClick={() => setPackId(p.id)}
-                >
-                  <div className="pname">{p.name}</div>
-                  <div className="pcount">{p.pairCount} woorden</div>
-                </div>
-              ))}
-            </div>
+          <label>Kies een onderwerp</label>
+          <div className="topic-grid">
+            {topics.map((name) => (
+              <button
+                key={name}
+                type="button"
+                data-topic={name}
+                className={`topic-card ${name === topicName ? 'active' : ''}`}
+                onClick={() => setTopicName(name)}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+
+          {categories.length > 0 && (
+            <>
+              <label>Kies een onderdeel</label>
+              <div className="category-row">
+                {categories.map((c) => {
+                  const meta = categoryMeta(c.category)
+                  return (
+                    <button
+                      key={c.category}
+                      type="button"
+                      data-category={c.category}
+                      className={`category-chip ${c.category === category ? 'active' : ''}`}
+                      style={meta.color ? { '--chip-color': meta.color } : undefined}
+                      onClick={() => setCategory(c.category)}
+                    >
+                      <span aria-hidden="true">{meta.icon}</span>
+                      {meta.label}
+                      <span className="chip-count">{c.pairCount}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </>
           )}
 
-          <button type="submit" className="start-btn" disabled={!packId}>
+          <button type="submit" className="start-btn" disabled={!topicName || !category}>
             Start! ➜
           </button>
         </form>

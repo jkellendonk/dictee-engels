@@ -1,24 +1,40 @@
 import { test, expect } from '@playwright/test'
 
-test('shows the app title and all Groep 7 packs by default', async ({ page }) => {
+test('shows the app title and all eight topics regardless of Groep 8', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveTitle('Dictee Engels')
   await expect(page.locator('h1')).toHaveText('Dictee Engels')
 
-  const packNames = ['Activities', 'Animals', 'Creativity', 'Earth', 'People']
-  for (const name of packNames) {
-    await expect(page.locator('.pack-card .pname', { hasText: name })).toBeVisible()
+  await expect(page.locator('#groep8Check')).not.toBeChecked()
+  for (const name of ['Activities', 'Animals', 'Creativity', 'Earth', 'People', 'Emotions', 'Style', 'Time-Celebrations']) {
+    await expect(page.locator(`[data-topic="${name}"]`)).toBeVisible()
   }
-  await expect(page.locator('.dir-btn', { hasText: 'Groep 7' })).toHaveClass(/active/)
+  // Zonder het Groep 8-vinkje is er geen zinnen-onderdeel, wel woorden/werkwoorden/alles.
+  await expect(page.locator('[data-category="zinnen"]')).toHaveCount(0)
+  await expect(page.locator('[data-category="woorden"]')).toBeVisible()
+  await expect(page.locator('[data-category="werkwoorden"]')).toBeVisible()
+  await expect(page.locator('[data-category="alles"]')).toBeVisible()
 })
 
-test('Groep 8 shows an empty state and disables the start button', async ({ page }) => {
+test('checking Groep 8 only reveals the zinnen onderdeel, not new topics', async ({ page }) => {
   await page.goto('/')
-  await page.locator('.dir-btn', { hasText: 'Groep 8' }).click()
+  const topicCountBefore = await page.locator('.topic-card').count()
 
-  await expect(page.locator('.pack-card')).toHaveCount(0)
-  await expect(page.getByText(/Nog geen woordpakketten voor Groep 8/)).toBeVisible()
-  await expect(page.locator('.start-btn')).toBeDisabled()
+  await page.locator('#groep8Check').check()
+
+  await expect(page.locator('.topic-card')).toHaveCount(topicCountBefore)
+  await expect(page.locator('[data-category="zinnen"]')).toBeVisible()
+})
+
+test('unchecking Groep 8 while zinnen is selected falls back to alles', async ({ page }) => {
+  await page.goto('/')
+  await page.locator('#groep8Check').check()
+  await page.locator('[data-category="zinnen"]').click()
+  await expect(page.locator('[data-category="zinnen"]')).toHaveClass(/active/)
+
+  await page.locator('#groep8Check').uncheck()
+  await expect(page.locator('[data-category="zinnen"]')).toHaveCount(0)
+  await expect(page.locator('[data-category="alles"]')).toHaveClass(/active/)
 })
 
 test('board screen shows an empty state when nothing has been played yet', async ({ page }) => {

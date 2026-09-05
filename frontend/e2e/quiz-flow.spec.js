@@ -1,13 +1,14 @@
 import { test, expect } from '@playwright/test'
-import { WORD_PACKS } from '../src/data/wordPacks.js'
+import { TOPICS } from '../src/data/wordPacks.js'
 
-const animalsPairs = WORD_PACKS['Groep 7'].Animals
+const animalsPairs = TOPICS.Animals.categories.woorden
 const nlToEn = Object.fromEntries(animalsPairs.map((p) => [p.dutch, p.english]))
 
 async function startAnimalsQuiz(page, playerName = 'E2ETest') {
   await page.goto('/')
   await page.fill('#nameInput', playerName)
-  await page.locator('.pack-card', { hasText: 'Animals' }).click()
+  await page.locator('[data-topic="Animals"]').click()
+  await page.locator('[data-category="woorden"]').click()
   await page.locator('.start-btn').click()
   await expect(page.locator('.prompt-word')).toBeVisible()
 }
@@ -34,6 +35,11 @@ async function finishQuiz(page) {
     await answer(page, await currentCorrectAnswer(page))
   }
 }
+
+test('shows a colored category badge on the prompt card', async ({ page }) => {
+  await startAnimalsQuiz(page)
+  await expect(page.locator('.category-badge')).toContainText('Woordjes')
+})
 
 test('a wrong answer shows feedback with the correct word and resets the streak', async ({ page }) => {
   await startAnimalsQuiz(page)

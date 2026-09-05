@@ -12,13 +12,14 @@ function App() {
   const [playerName, setPlayerName] = useState('')
   const [activePlayerName, setActivePlayerName] = useState('Speler')
   const [direction, setDirection] = useState('nl-en')
-  const [group, setGroup] = useState('Groep 7')
-  const [packId, setPackId] = useState(null)
+  const [groep8, setGroep8] = useState(false)
+  const [topicName, setTopicName] = useState(null)
+  const [category, setCategory] = useState(null)
   const [pack, setPack] = useState(null)
   const [result, setResult] = useState(null)
 
   const startQuiz = async () => {
-    const fullPack = await getPack(packId)
+    const fullPack = await getPack(topicName, category, groep8)
     setActivePlayerName(playerName.trim() || 'Speler')
     setPack(fullPack)
     setResult(null)
@@ -34,10 +35,12 @@ function App() {
           setPlayerName={setPlayerName}
           direction={direction}
           setDirection={setDirection}
-          group={group}
-          setGroup={setGroup}
-          packId={packId}
-          setPackId={setPackId}
+          groep8={groep8}
+          setGroep8={setGroep8}
+          topicName={topicName}
+          setTopicName={setTopicName}
+          category={category}
+          setCategory={setCategory}
           onStart={startQuiz}
           onOpenBoard={() => setScreen('board')}
         />
