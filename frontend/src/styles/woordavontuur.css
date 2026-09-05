@@ -237,6 +237,7 @@ body{
 }
 .answer-row input:focus{ border-color:var(--teal); }
 .answer-row input.correct{ border-color:var(--mint); background:#EAFBF5; }
+.answer-row input.warn{ border-color:var(--gold); background:#FFF8E1; }
 .answer-row input.wrong{ border-color:var(--coral); background:#FFEFEF; }
 .answer-row input:disabled{ opacity:.85; }
 
@@ -254,6 +255,7 @@ body{
   min-height:24px; margin-bottom:8px;
 }
 .msg.good{ color:var(--mint); }
+.msg.warn{ color:#8A6B3D; }
 .msg.bad{ color:var(--coral); }
 
 .hint{ text-align:center; font-size:12px; font-weight:700; color:#A9B8B0; margin-top:-10px; margin-bottom:14px; }

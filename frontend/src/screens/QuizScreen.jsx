@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import Header from '../components/Header.jsx'
 import Modal from '../components/Modal.jsx'
-import { normalize, fmtTime, shuffle, promptWord, answerWord, promptLabel } from '../utils.js'
+import { normalize, stripPunctuation, fmtTime, shuffle, promptWord, answerWord, promptLabel } from '../utils.js'
 import { CATEGORY_META } from '../data/categories.js'
 
 const PRAISE = ['Goed zo!', 'Top!', 'Knap gedaan!', 'Yes!']
@@ -29,7 +29,7 @@ export function initialQuizState(pack) {
 export function reducer(state, action) {
   switch (action.type) {
     case 'SUBMIT': {
-      const { isCorrect, idx } = action
+      const { isCorrect, punctuationOnly, idx } = action
       const isFirstAttempt = !state.attemptedFirstTime.has(idx)
       const attemptedFirstTime = new Set(state.attemptedFirstTime)
       if (isFirstAttempt) attemptedFirstTime.add(idx)
@@ -42,7 +42,7 @@ export function reducer(state, action) {
         return {
           ...state,
           answered: true,
-          lastResult: 'correct',
+          lastResult: punctuationOnly ? 'warn' : 'correct',
           mastered,
           struggling,
           firstTryCorrect: state.firstTryCorrect + (isFirstAttempt ? 1 : 0),
@@ -50,7 +50,9 @@ export function reducer(state, action) {
           streak,
           bestStreak: Math.max(state.bestStreak, streak),
           justHitMilestone: streak > 0 && streak % 5 === 0,
-          message: PRAISE[Math.floor(Math.random() * PRAISE.length)],
+          message: punctuationOnly
+            ? 'Let op interpunctie!'
+            : PRAISE[Math.floor(Math.random() * PRAISE.length)],
         }
       }
       return {
@@ -106,23 +108,38 @@ function QuizScreen({ pack, direction, playerName, sound, onFinish, onBackToMenu
   const submitAnswer = () => {
     if (state.answered) return
     const value = inputRef.current ? inputRef.current.value : ''
-    const isCorrect = normalize(value) === normalize(correctAnswer)
-    dispatch({ type: 'SUBMIT', isCorrect, idx: state.activeIndex })
+    const exactMatch = normalize(value) === normalize(correctAnswer)
+    // Bij zinnen mag interpunctie de enige afwijking zijn: dan telt het als
+    // goed, met een waarschuwing in plaats van "fout".
+    const punctuationOnlyMatch =
+      !exactMatch &&
+      pair.category === 'zinnen' &&
+      normalize(stripPunctuation(value)) === normalize(stripPunctuation(correctAnswer))
+    dispatch({
+      type: 'SUBMIT',
+      isCorrect: exactMatch || punctuationOnlyMatch,
+      punctuationOnly: punctuationOnlyMatch,
+      idx: state.activeIndex,
+    })
   }
 
   useEffect(() => {
     if (!state.answered) return
     if (state.justHitMilestone) sound.playStreak()
-    else if (state.lastResult === 'correct') sound.playCorrect()
-    else sound.playWrong()
+    else if (state.lastResult === 'wrong') sound.playWrong()
+    else sound.playCorrect()
 
     if (inputRef.current) {
-      inputRef.current.classList.remove('correct', 'wrong')
-      inputRef.current.classList.add(state.lastResult === 'correct' ? 'correct' : 'wrong')
-      if (state.lastResult !== 'correct') inputRef.current.value = correctAnswer
+      inputRef.current.classList.remove('correct', 'warn', 'wrong')
+      if (state.lastResult === 'wrong') {
+        inputRef.current.classList.add('wrong')
+        inputRef.current.value = correctAnswer
+      } else {
+        inputRef.current.classList.add(state.lastResult === 'warn' ? 'warn' : 'correct')
+      }
     }
 
-    const delay = state.lastResult === 'correct' ? 700 : 1700
+    const delay = state.lastResult === 'wrong' ? 1700 : state.lastResult === 'warn' ? 1300 : 700
     const t = setTimeout(() => dispatch({ type: 'ADVANCE' }), delay)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -132,7 +149,7 @@ function QuizScreen({ pack, direction, playerName, sound, onFinish, onBackToMenu
     if (state.answered) return
     if (inputRef.current) {
       inputRef.current.value = ''
-      inputRef.current.classList.remove('correct', 'wrong')
+      inputRef.current.classList.remove('correct', 'warn', 'wrong')
       inputRef.current.focus()
     }
   }, [state.answered, state.activeIndex])
@@ -210,8 +227,15 @@ function QuizScreen({ pack, direction, playerName, sound, onFinish, onBackToMenu
         </div>
       </div>
 
-      <div className={`msg ${state.lastResult === 'correct' ? 'good' : state.lastResult === 'wrong' ? 'bad' : ''}`}>
+      <div
+        className={`msg ${
+          state.lastResult === 'correct' ? 'good' : state.lastResult === 'warn' ? 'warn' : state.lastResult === 'wrong' ? 'bad' : ''
+        }`}
+      >
         {state.lastResult === 'correct' && state.message}
+        {state.lastResult === 'warn' && (
+          <>⚠️ {state.message} Officieel: <u>{correctAnswer}</u></>
+        )}
         {state.lastResult === 'wrong' && (
           <>Bijna! Het juiste woord is: <u>{correctAnswer}</u>. Komt later terug.</>
         )}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { shuffle, normalize, fmtTime, promptWord, answerWord, promptLabel } from './utils.js'
+import { shuffle, normalize, stripPunctuation, fmtTime, promptWord, answerWord, promptLabel } from './utils.js'
 
 describe('shuffle', () => {
   it('keeps the same elements (multiset) and length', () => {
@@ -24,6 +24,22 @@ describe('normalize', () => {
 
   it('leaves an already-normalized string unchanged', () => {
     expect(normalize('cat')).toBe('cat')
+  })
+})
+
+describe('stripPunctuation', () => {
+  it('removes sentence punctuation but keeps letters, numbers and spaces', () => {
+    expect(stripPunctuation('My dog is very happy!')).toBe('My dog is very happy')
+    expect(stripPunctuation("It's busy in the city!")).toBe('Its busy in the city')
+    expect(stripPunctuation('30 degrees Celsius.')).toBe('30 degrees Celsius')
+  })
+
+  it('collapses whitespace left behind by removed punctuation', () => {
+    expect(stripPunctuation('Wait, what?')).toBe('Wait what')
+  })
+
+  it('leaves a string without punctuation unchanged', () => {
+    expect(stripPunctuation('hello world')).toBe('hello world')
   })
 })
 

@@ -61,6 +61,18 @@ describe('reducer: SUBMIT', () => {
     expect(next.mastered.has(idx)).toBe(true)
   })
 
+  it('a punctuation-only mismatch counts as correct but is flagged as a warning', () => {
+    const state = initialQuizState(pack)
+    const idx = state.activeIndex
+    const next = reducer(state, { type: 'SUBMIT', isCorrect: true, punctuationOnly: true, idx })
+    expect(next.lastResult).toBe('warn')
+    expect(next.message).toBe('Let op interpunctie!')
+    expect(next.mastered.has(idx)).toBe(true)
+    expect(next.streak).toBe(1)
+    expect(next.firstTryCorrect).toBe(1)
+    expect(next.mistakes).toBe(0)
+  })
+
   it('flags a milestone every 5th consecutive correct answer', () => {
     const bigPack = { ...pack, pairs: Array.from({ length: 5 }, (_, i) => ({ id: i, english: `w${i}`, dutch: `w${i}` })) }
     let state = initialQuizState(bigPack)

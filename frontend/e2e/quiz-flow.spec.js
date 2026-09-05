@@ -41,6 +41,32 @@ test('shows a colored category badge on the prompt card', async ({ page }) => {
   await expect(page.locator('.category-badge')).toContainText('Woordjes')
 })
 
+test('a punctuation-only mismatch in a zinnen-pakket still counts as correct, with a warning', async ({ page }) => {
+  const zinnenPairs = TOPICS.Animals.categories.zinnen
+  const nlToEnZinnen = Object.fromEntries(zinnenPairs.map((p) => [p.dutch, p.english]))
+
+  await page.goto('/')
+  await page.fill('#nameInput', 'PunctuatieTester')
+  await page.locator('.switch-row').click() // Groep 8 aan voor de zinnen-categorie
+  await page.locator('[data-topic="Animals"]').click()
+  await page.locator('[data-category="zinnen"]').click()
+  await page.locator('.start-btn').click()
+  await expect(page.locator('.prompt-word')).toBeVisible()
+
+  const shown = await page.locator('.prompt-word').innerText()
+  const correct = nlToEnZinnen[shown.trim()]
+  const withoutPunctuation = correct.replace(/[.,!?;:]+$/, '')
+  expect(withoutPunctuation).not.toBe(correct)
+
+  await page.fill('.answer-row input', withoutPunctuation)
+  await page.keyboard.press('Enter')
+
+  await expect(page.locator('.msg.warn')).toContainText('Let op interpunctie')
+  await expect(page.locator('.answer-row input')).toHaveClass(/warn/)
+  await expect(page.locator('.trail-meta')).toContainText('1 / 5 onder de knie')
+  await expect(page.locator('.trail-meta')).toContainText('0 foutjes tot nu toe')
+})
+
 test('a wrong answer shows feedback with the correct word and resets the streak', async ({ page }) => {
   await startAnimalsQuiz(page)
 

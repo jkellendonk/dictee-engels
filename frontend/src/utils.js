@@ -11,6 +11,16 @@ export function normalize(str) {
   return str.trim().toLowerCase()
 }
 
+// Verwijdert interpunctie (punten, komma's, uitroeptekens, aanhalingstekens, ...)
+// zodat zinnen ook goedgerekend kunnen worden als alleen de interpunctie afwijkt.
+// Letters, cijfers en spaties blijven staan; dubbele spaties worden opgeschoond.
+export function stripPunctuation(str) {
+  return str
+    .replace(/[^\p{L}\p{N}\s]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export function fmtTime(sec) {
   const m = Math.floor(sec / 60)
   const s = sec % 60
