@@ -20,7 +20,7 @@ test('checking Groep 8 only reveals the zinnen onderdeel, not new topics', async
   await page.goto('/')
   const topicCountBefore = await page.locator('.topic-card').count()
 
-  await page.locator('#groep8Check').check()
+  await page.locator('.switch-row').click()
 
   await expect(page.locator('.topic-card')).toHaveCount(topicCountBefore)
   await expect(page.locator('[data-category="zinnen"]')).toBeVisible()
@@ -28,11 +28,11 @@ test('checking Groep 8 only reveals the zinnen onderdeel, not new topics', async
 
 test('unchecking Groep 8 while zinnen is selected falls back to alles', async ({ page }) => {
   await page.goto('/')
-  await page.locator('#groep8Check').check()
+  await page.locator('.switch-row').click()
   await page.locator('[data-category="zinnen"]').click()
   await expect(page.locator('[data-category="zinnen"]')).toHaveClass(/active/)
 
-  await page.locator('#groep8Check').uncheck()
+  await page.locator('.switch-row').click()
   await expect(page.locator('[data-category="zinnen"]')).toHaveCount(0)
   await expect(page.locator('[data-category="alles"]')).toHaveClass(/active/)
 })

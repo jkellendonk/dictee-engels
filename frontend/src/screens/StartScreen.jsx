@@ -68,14 +68,22 @@ function StartScreen({
             onChange={(e) => setPlayerName(e.target.value)}
           />
 
-          <label className="checkbox-row" htmlFor="groep8Check">
-            <input
-              id="groep8Check"
-              type="checkbox"
-              checked={groep8}
-              onChange={(e) => setGroep8(e.target.checked)}
-            />
-            Ik zit in groep 8 (zinnen erbij)
+          <label className="switch-row" htmlFor="groep8Check">
+            <span className="switch-text">
+              Ik zit in groep 8
+              <span className="switch-sub">zinnen erbij</span>
+            </span>
+            <span className="switch">
+              <input
+                id="groep8Check"
+                type="checkbox"
+                checked={groep8}
+                onChange={(e) => setGroep8(e.target.checked)}
+              />
+              <span className="switch-track">
+                <span className="switch-knob"></span>
+              </span>
+            </span>
           </label>
 
           <label>Richting</label>
