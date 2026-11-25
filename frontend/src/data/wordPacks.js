@@ -444,3 +444,9 @@ export const TOPICS = {
     categories: { woorden: CREATIVITY_WORDS, werkwoorden: CREATIVITY_VERBS, zinnen: CREATIVITY_ZINNEN },
   },
 }
+
+// Alle paren uit alle onderwerpen bij elkaar, om alternatieve antwoorden op te
+// zoeken (bv. "broek" → "trousers" én "pants") — zie acceptedAnswers in utils.js.
+export const ALL_PAIRS = Object.values(TOPICS).flatMap((topic) =>
+  Object.values(topic.categories).flat(),
+)

@@ -1,7 +1,8 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import Header from '../components/Header.jsx'
 import Modal from '../components/Modal.jsx'
-import { normalize, stripPunctuation, fmtTime, shuffle, promptWord, answerWord, promptLabel } from '../utils.js'
+import { normalize, stripPunctuation, fmtTime, shuffle, promptWord, promptLabel, acceptedAnswers } from '../utils.js'
+import { ALL_PAIRS } from '../data/wordPacks.js'
 import { CATEGORY_META } from '../data/categories.js'
 
 const PRAISE = ['Goed zo!', 'Top!', 'Knap gedaan!', 'Yes!']
@@ -95,7 +96,10 @@ function QuizScreen({ pack, direction, playerName, sound, onFinish, onBackToMenu
 
   const pair = pack.pairs[state.activeIndex]
   const shownWord = promptWord(pair, direction)
-  const correctAnswer = answerWord(pair, direction)
+  // Meestal één antwoord; bij woorden met meerdere vertalingen (bv. "broek")
+  // tellen ze allemaal en tonen we ze samen bij een fout antwoord.
+  const answers = acceptedAnswers(pair, direction, ALL_PAIRS)
+  const correctAnswer = answers.join(' / ')
   const categoryMeta = CATEGORY_META[pair.category]
 
   useEffect(() => {
@@ -108,13 +112,13 @@ function QuizScreen({ pack, direction, playerName, sound, onFinish, onBackToMenu
   const submitAnswer = () => {
     if (state.answered) return
     const value = inputRef.current ? inputRef.current.value : ''
-    const exactMatch = normalize(value) === normalize(correctAnswer)
+    const exactMatch = answers.some((a) => normalize(value) === normalize(a))
     // Bij zinnen mag interpunctie de enige afwijking zijn: dan telt het als
     // goed, met een waarschuwing in plaats van "fout".
     const punctuationOnlyMatch =
       !exactMatch &&
       pair.category === 'zinnen' &&
-      normalize(stripPunctuation(value)) === normalize(stripPunctuation(correctAnswer))
+      answers.some((a) => normalize(stripPunctuation(value)) === normalize(stripPunctuation(a)))
     dispatch({
       type: 'SUBMIT',
       isCorrect: exactMatch || punctuationOnlyMatch,

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { shuffle, normalize, stripPunctuation, fmtTime, promptWord, answerWord, promptLabel } from './utils.js'
+import { shuffle, normalize, stripPunctuation, fmtTime, promptWord, answerWord, promptLabel, acceptedAnswers } from './utils.js'
+import { ALL_PAIRS } from './data/wordPacks.js'
 
 describe('shuffle', () => {
   it('keeps the same elements (multiset) and length', () => {
@@ -78,5 +79,27 @@ describe('promptLabel', () => {
 
   it('en-nl asks for the Dutch word', () => {
     expect(promptLabel('en-nl')).toMatch(/Nederlandse/)
+  })
+})
+
+describe('acceptedAnswers', () => {
+  it('accepts every English translation of a Dutch word that appears more than once', () => {
+    const pair = { english: 'trousers', dutch: 'broek' }
+    expect(acceptedAnswers(pair, 'nl-en', ALL_PAIRS).sort()).toEqual(['pants', 'trousers'])
+    expect(acceptedAnswers({ english: 'coat', dutch: 'jas' }, 'nl-en', ALL_PAIRS).sort()).toEqual(['coat', 'jacket'])
+  })
+
+  it('accepts alternatives from other topics too', () => {
+    const pair = { english: 'swimming', dutch: 'zwemmen' }
+    expect(acceptedAnswers(pair, 'nl-en', ALL_PAIRS).sort()).toEqual(['swimming', 'to swim'])
+  })
+
+  it('keeps jij/jullie apart because their prompts differ by hint', () => {
+    const pair = { english: 'you feel', dutch: 'jij voelt', hint: 'jij' }
+    expect(acceptedAnswers(pair, 'en-nl', ALL_PAIRS)).toEqual(['jij voelt'])
+  })
+
+  it('returns only the own answer for unique words', () => {
+    expect(acceptedAnswers({ english: 'monkey', dutch: 'aap' }, 'nl-en', ALL_PAIRS)).toEqual(['monkey'])
   })
 })
