@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import Header from '../components/Header.jsx'
 import Modal from '../components/Modal.jsx'
-import { normalize, stripPunctuation, fmtTime, shuffle, promptWord, promptLabel, acceptedAnswers } from '../utils.js'
+import { normalize, stripPunctuation, fmtTime, shuffle, promptWord, answerWord, promptLabel, acceptedAnswers } from '../utils.js'
 import { ALL_PAIRS } from '../data/wordPacks.js'
 import { CATEGORY_META } from '../data/categories.js'
 
@@ -96,10 +96,11 @@ function QuizScreen({ pack, direction, playerName, sound, onFinish, onBackToMenu
 
   const pair = pack.pairs[state.activeIndex]
   const shownWord = promptWord(pair, direction)
-  // Meestal één antwoord; bij woorden met meerdere vertalingen (bv. "broek")
-  // tellen ze allemaal en tonen we ze samen bij een fout antwoord.
+  // Bij woorden met meerdere vertalingen (bv. "jas" → "coat" of "jacket") telt
+  // elk daarvan los als goed. Getoond wordt altijd maar één woord: het eigen
+  // antwoord van dit paar.
   const answers = acceptedAnswers(pair, direction, ALL_PAIRS)
-  const correctAnswer = answers.join(' / ')
+  const correctAnswer = answerWord(pair, direction)
   const categoryMeta = CATEGORY_META[pair.category]
 
   useEffect(() => {
