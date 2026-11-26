@@ -1,17 +1,39 @@
 name: Dependabot auto-merge
-on: pull_request
+
+# Runs after CI finishes on a Dependabot PR. Merging here (instead of with
+# `gh pr merge --auto`) lets us start the deploy afterwards: a merge made with
+# GITHUB_TOKEN does not trigger the push workflow, but workflow_dispatch does.
+on:
+  workflow_run:
+    workflows: ["CI en Deploy naar GitHub Pages"]
+    types: [completed]
 
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
-  automerge:
+  merge-and-deploy:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.actor.login == 'dependabot[bot]' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+      BRANCH: ${{ github.event.workflow_run.head_branch }}
+      SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
-      - name: Enable auto-merge
-        run: gh pr merge --auto --squash "$PR_URL"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Merge the tested commit and deploy
+        run: |
+          author=$(gh pr view "$BRANCH" --repo "$REPO" --json author --jq .author.login)
+          if [ "$author" != "app/dependabot" ]; then
+            echo "Not a Dependabot PR (author: $author), skipping."
+            exit 0
+          fi
+          # Only merge the exact commit CI tested.
+          gh pr merge "$BRANCH" --repo "$REPO" --squash --delete-branch --match-head-commit "$SHA"
+          gh workflow run deploy.yml --repo "$REPO" --ref main
